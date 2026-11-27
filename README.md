@@ -147,5 +147,6 @@ Ce module démontre la complexité de fusionner deux architectures réseau disti
 | Dépendances | Si `mss` ou `Pillow` sont absents, les scripts sont censés tenter de les installer via `pip`. Vérifiez la disponibilité de Python dans le `PATH` de Windows. |
 | Réseau | Vérifiez avec `ip a` (Kali) et `ping` que les deux machines de test communiquent sur leur réseau privé. |
 
----
-
+--
+La partie Linux a été par Leo
+La partie Windows a été fais par gabriel
